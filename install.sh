@@ -175,7 +175,7 @@ if [ "$FROM_SOURCE" = 0 ] && [ "$(uname -m)" = x86_64 ]; then
   fi
   if [ -f "$tarball" ]; then
     if [ -f "$tarball.sha256" ]; then
-      want=$(awk '{print $1}' "$tarball.sha256"); have=$(sha256sum "$tarball" | awk '{print $1}')
+      want=$(cut -d' ' -f1 < "$tarball.sha256"); have=$(sha256sum "$tarball" | cut -d' ' -f1)
       [ "$want" = "$have" ] || die "download is damaged (SHA-256 mismatch) - try again"
       info "SHA-256 checked"
     fi
@@ -194,8 +194,11 @@ if [ -z "$SRC" ]; then
     mkdir -p "$WORK/src"
     curl -fsSL --retry 3 "$SOURCE_URL" | tar -xz -C "$WORK/src" --strip-components=1 || die "could not download the source"
   fi
-  cargo_ok() { command -v cargo >/dev/null 2>&1 &&
-    cargo --version | awk '{split($2,v,"."); exit !(v[1]>1 || (v[1]==1 && v[2]>=83))}'; }
+  cargo_ok() {  # cargo 1.83 or newer
+    command -v cargo >/dev/null 2>&1 || return 1
+    local v maj min; v=$(cargo --version | cut -d' ' -f2); maj=${v%%.*}; min=${v#*.}; min=${min%%.*}
+    [ "$maj" -gt 1 ] 2>/dev/null || { [ "$maj" = 1 ] && [ "$min" -ge 83 ] 2>/dev/null; }
+  }
   if ! cargo_ok; then
     info "installing a private Rust toolchain (rustup) for the build"
     export RUSTUP_HOME="$WORK/rustup" CARGO_HOME="$WORK/cargo"
@@ -233,14 +236,23 @@ for grp in video render input; do getent group "$grp" >/dev/null 2>&1 && as_root
 step "Installing TDM"
 as_root mkdir -p "$STATE_DIR"
 : > "$WORK/manifest"
-put() {  # put MODE SRC DEST [keep]  - "keep" leaves an existing file alone
-  local mode="$1" from="$2" to="$3" keep="${4:-}"
-  if [ -n "$keep" ] && as_root test -e "$to"; then info "kept your $to"; return 0; fi
-  if as_root test -f "$to" && ! as_root test -f "$to.before-tdm" && ! as_root grep -qs 'tdm-greeter\|TomOS Display Manager\|TDM' "$to"; then
+ours() {  # ours FILE - installed by an earlier run of this script
+  as_root test -f "$MANIFEST" && as_root grep -qxF "$1" "$MANIFEST"
+}
+put() {  # put MODE SRC DEST [keep|settings]
+  # keep:     leave an existing file alone (e.g. a wallpaper that's already there)
+  # settings: like keep, and never removed by --uninstall (the user's greeter.conf)
+  local mode="$1" from="$2" to="$3" kind="${4:-}"
+  if [ -n "$kind" ] && as_root test -e "$to"; then
+    [ "$kind" = settings ] && info "kept your $to"
+    return 0
+  fi
+  if as_root test -f "$to" && ! as_root test -f "$to.before-tdm" && ! ours "$to" &&
+     ! as_root grep -qs 'tdm-greeter' "$to"; then
     as_root cp -p "$to" "$to.before-tdm"; info "backed up $to"
   fi
   as_root install -Dm"$mode" "$from" "$to"
-  echo "$to" >> "$WORK/manifest"
+  [ "$kind" = settings ] || echo "$to" >> "$WORK/manifest"
 }
 sed "s/_greetd/$GUSER/g" "$SRC/data/greetd-config.toml" > "$WORK/greetd.toml"
 sed "s/_greetd/$GUSER/g" "$SRC/data/tdm.tmpfiles"       > "$WORK/tdm.tmpfiles"
@@ -250,7 +262,7 @@ put 755 "$SRC/tdm"                 /usr/bin/tdm
 put 755 "$SRC/tdm-greeter"         /usr/bin/tdm-greeter
 put 755 "$SRC/data/tomos-dm"       /usr/bin/tomos-dm
 put 644 "$WORK/greetd.toml"        /etc/greetd/config.toml
-put 644 "$SRC/data/greeter.conf"   /etc/tdm/greeter.conf keep
+put 644 "$SRC/data/greeter.conf"   /etc/tdm/greeter.conf settings
 put 644 "$WORK/tdm.tmpfiles"       /usr/lib/tmpfiles.d/tdm.conf
 put 644 "$WORK/polkit.rules"       /etc/polkit-1/rules.d/50-tdm-greeter.rules
 put 644 "$SRC/data/logo.png"       /usr/share/tdm/logo.png
@@ -260,7 +272,7 @@ as_root sh -c "cat '$WORK/manifest' >> '$MANIFEST' && sort -u -o '$MANIFEST' '$M
 if command -v systemd-tmpfiles >/dev/null 2>&1; then as_root systemd-tmpfiles --create /usr/lib/tmpfiles.d/tdm.conf || true
 else as_root install -d -m750 -o "$GUSER" -g "$(id -gn "$GUSER")" "$STATE_DIR"; fi
 info "greeter runs as: $GUSER"
-ok "TDM $(/usr/bin/tdm --version 2>/dev/null | awk '{print $NF}') installed"
+ver=$(/usr/bin/tdm --version 2>/dev/null || true); ok "TDM ${ver##* } installed"
 
 # ---------------------------------------------------------------- enable
 if [ "$ENABLE" = 1 ]; then

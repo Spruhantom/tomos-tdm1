@@ -82,10 +82,12 @@ jobs:
           grep -q 'KEEP ME' /etc/tdm/greeter.conf
       - name: Uninstall
         run: |
+          set -x
           bash install.sh --uninstall
-          ! test -e /usr/bin/tdm-greeter
-          ! test -e /usr/bin/tdm
-          test -f /etc/tdm/greeter.conf   # settings are kept
+          if [ -e /usr/bin/tdm-greeter ] || [ -e /usr/bin/tdm ]; then echo "TDM still installed"; exit 1; fi
+          if ls /usr/share/tdm/*.before-tdm /usr/bin/*.before-tdm 2>/dev/null | grep .; then echo "backed up our own files"; exit 1; fi
+          grep -q 'KEEP ME' /etc/tdm/greeter.conf   # settings are kept
+          if grep -qs tdm-greeter /etc/greetd/config.toml; then echo "greetd still points at TDM"; exit 1; fi
 
   from-source:
     # Ubuntu 24.04's own Rust is too old, so this also tests the rustup fallback
