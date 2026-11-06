@@ -1,0 +1,11 @@
+// Let the TDM greeter (user _greetd) suspend, reboot and power off from the
+// login screen, like other display managers.
+polkit.addRule(function(action, subject) {
+    if (subject.user == "_greetd" &&
+        (action.id.indexOf("org.freedesktop.login1.power-off") == 0 ||
+         action.id.indexOf("org.freedesktop.login1.reboot") == 0 ||
+         action.id.indexOf("org.freedesktop.login1.suspend") == 0 ||
+         action.id.indexOf("org.freedesktop.login1.hibernate") == 0)) {
+        return polkit.Result.YES;
+    }
+});

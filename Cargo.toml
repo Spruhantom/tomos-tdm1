@@ -1,0 +1,34 @@
+[package]
+name = "tomos-display-manager"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.83"
+description = "TomOS Display Manager: a neon GTK4 greeter for greetd"
+license = "MIT"
+repository = "https://github.com/Spruhantom/tomos-tdm1"
+readme = "README.md"
+
+[lib]
+name = "tdm"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tdm"
+path = "src/main.rs"
+
+[[bin]]
+name = "tdm-greeter"
+path = "src/bin/greeter.rs"
+
+[dependencies]
+gtk = { package = "gtk4", version = "0.9", features = ["v4_12"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+shlex = "1.3"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "s"
+panic = "abort"

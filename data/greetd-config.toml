@@ -1,0 +1,12 @@
+# Tom OS — greetd runs the TomOS Display Manager (TDM) greeter inside the
+# cage kiosk compositor. Managed by tomos-display-manager.
+#
+# GDK_DEBUG=no-portals / NO_AT_BRIDGE=1: the _greetd user has no desktop
+# portal or accessibility bus, so skip them instead of waiting on D-Bus.
+# GSK_RENDERER=cairo: robust software rendering on any GPU (incl. VMs).
+[terminal]
+vt = 7
+
+[default_session]
+command = "env GDK_DEBUG=no-portals NO_AT_BRIDGE=1 GSK_RENDERER=cairo cage -s -m last -- /usr/bin/tdm-greeter"
+user = "_greetd"

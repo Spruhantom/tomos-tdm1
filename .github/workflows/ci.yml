@@ -1,0 +1,99 @@
+name: ci
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev pkg-config xvfb
+          rustup toolchain install stable --profile minimal
+          cargo --version
+      - name: Test
+        run: cargo test --release --locked
+      - name: Build
+        run: cargo build --release --locked
+      - name: Smoke test the greeter on a virtual screen
+        run: |
+          ./target/release/tdm --version
+          ./target/release/tdm config
+          printf 'theme = light\ncss = %s/ci.css\nbrand = CI\n' "$PWD" > ci.conf
+          printf '.tdm-title { color: #39ff14; }\n' > ci.css
+          TDM_CONFIG=$PWD/ci.conf TDM_STATE=/tmp/tdm-state TDM_WINDOWED=1 GSK_RENDERER=cairo \
+            timeout 8 xvfb-run -a ./target/release/tdm-greeter > greeter.log 2>&1 || code=$?
+          cat greeter.log
+          # timeout (124) means it was still running happily after 8 seconds
+          [ "${code:-0}" = 124 ] || { echo "greeter exited early with ${code:-0}"; exit 1; }
+          ! grep -q 'custom CSS' greeter.log
+      - name: Package
+        run: scripts/package.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tdm-x86_64-linux
+          path: |
+            dist/tdm-x86_64-linux.tar.gz
+            dist/tdm-x86_64-linux.tar.gz.sha256
+
+  install:
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:24.04", "debian:trixie", "fedora:latest", "archlinux:latest", "opensuse/tumbleweed"]
+    container: ${{ matrix.image }}
+    steps:
+      - name: curl and tar
+        run: |
+          if command -v apt-get >/dev/null; then apt-get update -qq && apt-get install -y -qq curl ca-certificates; fi
+          if command -v dnf >/dev/null; then dnf install -y -q curl tar gzip findutils; fi
+          if command -v pacman >/dev/null; then pacman -Sy --noconfirm --needed curl tar gzip; fi
+          if command -v zypper >/dev/null; then zypper --non-interactive install curl tar gzip; fi
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: tdm-x86_64-linux, path: artifact }
+      - name: Install with the one-line installer
+        run: |
+          TDM_TARBALL=$PWD/artifact/tdm-x86_64-linux.tar.gz bash install.sh --yes
+      - name: Check the install
+        run: |
+          set -x
+          tdm --version
+          LD_BIND_NOW=1 tdm-greeter --version
+          test -x /usr/bin/tomos-dm
+          grep -q tdm-greeter /etc/greetd/config.toml
+          u=$(sed -n 's/^user *= *"\(.*\)"/\1/p' /etc/greetd/config.toml); id "$u"
+          grep -q "$u" /etc/polkit-1/rules.d/50-tdm-greeter.rules
+          test -f /etc/tdm/greeter.conf && test -f /usr/share/tdm/logo.png
+          test -f /usr/share/backgrounds/tomos/wallpaper-eclipse.png
+          test -d /var/lib/tdm
+          tdm config | grep -q 'theme: Neon'
+          tdm check
+      - name: Settings survive a reinstall
+        run: |
+          echo 'title = KEEP ME' >> /etc/tdm/greeter.conf
+          TDM_TARBALL=$PWD/artifact/tdm-x86_64-linux.tar.gz bash install.sh --yes
+          grep -q 'KEEP ME' /etc/tdm/greeter.conf
+      - name: Uninstall
+        run: |
+          bash install.sh --uninstall
+          ! test -e /usr/bin/tdm-greeter
+          ! test -e /usr/bin/tdm
+          test -f /etc/tdm/greeter.conf   # settings are kept
+
+  from-source:
+    # Ubuntu 24.04's own Rust is too old, so this also tests the rustup fallback
+    runs-on: ubuntu-24.04
+    container: ubuntu:24.04
+    steps:
+      - run: apt-get update -qq && apt-get install -y -qq curl ca-certificates
+      - uses: actions/checkout@v4
+      - name: Install from source
+        run: TDM_SOURCE_DIR=$PWD bash install.sh --yes --from-source
+      - run: tdm --version && LD_BIND_NOW=1 tdm-greeter --version && tdm check

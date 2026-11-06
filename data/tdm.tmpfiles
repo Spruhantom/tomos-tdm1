@@ -1,0 +1,2 @@
+# Remembered last user/session for the TDM greeter
+d /var/lib/tdm 0750 _greetd _greetd -

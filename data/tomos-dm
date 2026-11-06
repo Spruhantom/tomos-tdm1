@@ -1,0 +1,21 @@
+#!/bin/sh
+# tomos-dm — choose the Tom OS login screen.
+#   tomos-dm status     show the active display manager
+#   tomos-dm tdm        TomOS Display Manager (greetd + TDM, default)
+#   tomos-dm ly         ly terminal display manager (fallback)
+set -e
+case "${1:-status}" in
+  status)
+    printf 'display-manager.service -> %s\n' "$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null || echo none)" ;;
+  tdm|greetd)
+    [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
+    systemctl disable ly.service 2>/dev/null || true
+    systemctl enable --force greetd.service
+    echo "TDM will be used at next boot." ;;
+  ly)
+    [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
+    systemctl disable greetd.service 2>/dev/null || true
+    systemctl enable --force ly.service
+    echo "ly will be used at next boot." ;;
+  *) echo "usage: tomos-dm [status|tdm|ly]" >&2; exit 2 ;;
+esac

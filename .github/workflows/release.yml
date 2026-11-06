@@ -1,0 +1,33 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libgtk-4-dev pkg-config
+          rustup toolchain install stable --profile minimal
+      - run: cargo test --release --locked && cargo build --release --locked
+      - run: scripts/package.sh
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          notes="TomOS Display Manager ${tag#v}.
+
+          Install or update with one line:
+
+              curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/install.sh | bash
+
+          Prebuilt for x86_64 Linux (GTK 4.12+, glibc 2.39+); other systems are built from source by the installer.
+
+          Created with [Perplexity](https://www.perplexity.ai/computer/tasks/ebea3e92-c3a5-4626-a883-38c9c330069a)"
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "TDM ${tag#v}" --notes "$notes"
+          gh release upload "$tag" dist/tdm-x86_64-linux.tar.gz dist/tdm-x86_64-linux.tar.gz.sha256 --clobber
