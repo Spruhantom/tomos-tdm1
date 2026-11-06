@@ -89,7 +89,7 @@ const HIGH_CONTRAST: Palette = Palette {
 
 const CSS_TEMPLATE: &str = r#"
 window.tdm { background-color: @BG@; color: @FG@;
-  font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+  font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "TDM Icons", "DejaVu Sans Mono", monospace; }
 .tdm-scrim { background-image: linear-gradient(180deg, alpha(@BG@,0.70), alpha(@BG@,0.10) 30%, alpha(@BG@,0.10) 70%, alpha(@BG@,0.80)); }
 .tdm-bar { padding: 16px 28px; }
 .tdm-brand { color: @ACCENT@; font-weight: 900; letter-spacing: 4px; font-size: 15px; text-shadow: @GLOW_ACCENT@; }
@@ -743,6 +743,14 @@ mod tests {
             let css = build_css(theme);
             assert!(!css.contains('@') || !css.contains("@ACCENT"), "placeholder left in {theme:?}");
             assert!(!css.contains("@BG@"));
+        }
+    }
+
+    #[test]
+    fn every_theme_falls_back_to_the_bundled_icon_font() {
+        // data/fonts/TDMIcons.otf carries the icons for distros without a Nerd Font
+        for theme in [Theme::Neon, Theme::Dark, Theme::Light, Theme::HighContrast] {
+            assert!(build_css(theme).contains("\"TDM Icons\""), "{theme:?}");
         }
     }
 

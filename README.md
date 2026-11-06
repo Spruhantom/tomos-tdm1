@@ -58,6 +58,7 @@ You need GTK 4.12 or newer and systemd. The prebuilt binary is for x86_64; on ot
 - **Four themes**: `neon`, `dark`, `light` and `high-contrast`, plus your own CSS on top.
 - **Clear messages**: "Wrong username or password.", a Caps Lock warning, and Escape to cancel.
 - **Power buttons** with a confirmation (Suspend, Restart, Shut down).
+- **Icons everywhere**: the bolt, user, desktop, Caps Lock and power icons come from a tiny bundled font ("TDM Icons", 3 KB, from Font Awesome 4.7 under the [SIL OFL](data/fonts/LICENSE-OFL.txt)), so they show correctly on every distro, with or without a Nerd Font.
 - **Safe**: session commands are split into arguments and never run through a shell, greetd messages are size-checked, and the password is cleared straight after each attempt.
 
 ## Screenshots
@@ -129,6 +130,7 @@ systemd ─► greetd.service (display-manager.service, VT 7)
 | `/usr/lib/tmpfiles.d/tdm.conf` | creates `/var/lib/tdm` for the remembered user |
 | `/etc/polkit-1/rules.d/50-tdm-greeter.rules` | lets the login screen suspend, restart and shut down |
 | `/usr/share/tdm/logo.png` | Tom OS logo |
+| `/usr/share/fonts/tdm/TDMIcons.otf` | the login screen's icons |
 
 ## Build it yourself
 
@@ -146,8 +148,8 @@ Then run `TDM_SOURCE_DIR=$PWD bash install.sh --from-source` to install your bui
 
 Every push runs [GitHub Actions](.github/workflows/ci.yml):
 
-- **Build and unit tests** on Ubuntu 24.04: 28 tests covering settings, users, remembered state, session parsing, full greetd conversations against a mock socket, and the theme CSS. Then the greeter is started on a virtual screen with a custom theme and CSS, and must still be running 8 seconds later.
-- **The one-line installer** on clean Ubuntu 24.04, Debian 13, Fedora, Arch and openSUSE Tumbleweed systems. Each one installs, checks every file and the greetd user, reinstalls (your settings must survive) and uninstalls.
+- **Build and unit tests** on Ubuntu 24.04: 29 tests covering settings, users, remembered state, session parsing, full greetd conversations against a mock socket, and the theme CSS. Then the greeter is started on a virtual screen with a custom theme and CSS, and must still be running 8 seconds later.
+- **The one-line installer** on clean Ubuntu 24.04, Debian 13, Fedora, Arch and openSUSE Tumbleweed systems. Each one installs, checks every file, the greetd user and that every icon is found in TDM Icons, reinstalls (your settings must survive) and uninstalls.
 - **The build-from-source path** on Ubuntu 24.04. Its own Rust is too old, so this also tests the automatic Rust download.
 
 Tagging `v*` builds the release download used by the installer ([release.yml](.github/workflows/release.yml)).

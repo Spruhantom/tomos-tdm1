@@ -98,10 +98,10 @@ pkg_refresh() {
 
 runtime_pkgs() {
   case "$PM" in
-    apt-get) echo "greetd cage libgtk-4-1 polkitd ca-certificates fonts-jetbrains-mono" ;;
-    dnf)     echo "greetd cage gtk4 polkit jetbrains-mono-fonts" ;;
-    zypper)  echo "greetd cage gtk4-tools libgtk-4-1 polkit jetbrains-mono-fonts" ;;
-    pacman)  echo "greetd cage gtk4 polkit ttf-jetbrains-mono-nerd" ;;
+    apt-get) echo "greetd cage libgtk-4-1 polkitd ca-certificates fontconfig fonts-jetbrains-mono" ;;
+    dnf)     echo "greetd cage gtk4 polkit fontconfig jetbrains-mono-fonts" ;;
+    zypper)  echo "greetd cage gtk4-tools libgtk-4-1 polkit fontconfig jetbrains-mono-fonts" ;;
+    pacman)  echo "greetd cage gtk4 polkit fontconfig ttf-jetbrains-mono-nerd" ;;
   esac
 }
 build_pkgs() {
@@ -266,9 +266,17 @@ put 644 "$SRC/data/greeter.conf"   /etc/tdm/greeter.conf settings
 put 644 "$WORK/tdm.tmpfiles"       /usr/lib/tmpfiles.d/tdm.conf
 put 644 "$WORK/polkit.rules"       /etc/polkit-1/rules.d/50-tdm-greeter.rules
 put 644 "$SRC/data/logo.png"       /usr/share/tdm/logo.png
+# The login screen's icons (bolt, user, power...) - works without a Nerd Font
+if [ -f "$SRC/data/fonts/TDMIcons.otf" ]; then
+  put 644 "$SRC/data/fonts/TDMIcons.otf"    /usr/share/fonts/tdm/TDMIcons.otf
+  put 644 "$SRC/data/fonts/LICENSE-OFL.txt" /usr/share/licenses/tdm/TDMIcons-LICENSE-OFL.txt
+else
+  warn "this TDM build has no icon font - icons may show as boxes without a Nerd Font"
+fi
 put 644 "$SRC/data/wallpaper-eclipse.png" /usr/share/backgrounds/tomos/wallpaper-eclipse.png keep
 as_root sh -c "cat '$WORK/manifest' >> '$MANIFEST' && sort -u -o '$MANIFEST' '$MANIFEST'"
 
+command -v fc-cache >/dev/null 2>&1 && as_root fc-cache -f /usr/share/fonts/tdm >/dev/null 2>&1 || true
 if command -v systemd-tmpfiles >/dev/null 2>&1; then as_root systemd-tmpfiles --create /usr/lib/tmpfiles.d/tdm.conf || true
 else as_root install -d -m750 -o "$GUSER" -g "$(id -gn "$GUSER")" "$STATE_DIR"; fi
 info "greeter runs as: $GUSER"

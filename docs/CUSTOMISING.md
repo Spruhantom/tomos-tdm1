@@ -190,7 +190,7 @@ button.tdm-signin { background-image: linear-gradient(90deg, #0f7a00, #39ff14); 
 | `button.tdm-power` | Suspend / Restart / Shut down |
 | `.tdm-status`, `.tdm-status.error`, `.tdm-status.busy` | message under the button |
 | `.tdm-caps` | Caps Lock warning |
-| `.tdm-footer` | `TDM 0.1.0 · TOMOS DISPLAY MANAGER` |
+| `.tdm-footer` | `TDM 0.1.1 · TOMOS DISPLAY MANAGER` |
 | `popover` | open drop-down menus |
 
 To see the CSS a theme uses as a starting point, run:
@@ -236,6 +236,30 @@ tdm check       # sessions, greetd setup, theme and custom CSS
 - **Login screen size and screens**: greetd runs TDM inside the `cage` compositor. The command is in `/etc/greetd/config.toml`. `cage -m last` shows the login screen on the last connected monitor; use `-m extend` to span all monitors.
 - **Switch back to the text login (ly)**: `sudo tomos-dm ly`. Switch back to TDM with `sudo tomos-dm tdm`.
 - **Change the built-in themes**: the four palettes are near the top of `src/bin/greeter.rs` (`NEON`, `DARK`, `LIGHT`, `HIGH_CONTRAST`). Edit them and rebuild (see the README). For most changes a `css` file is easier and survives updates.
+
+## Fonts and icons
+
+Text uses **JetBrainsMono Nerd Font** if it's installed, then **JetBrains Mono**, then DejaVu Sans Mono.
+The icons (bolt, user, desktop, Caps Lock, Suspend, Restart, Shut down) come from
+**TDM Icons**, a 3 KB font that the installer puts in `/usr/share/fonts/tdm/`. They
+show correctly even on systems without a Nerd Font:
+
+![Icons without and with TDM Icons](../screenshots/icons-before-after.png)
+
+To use a different font, set it in your CSS file. Keep `"TDM Icons"` in the list
+so the icons still work:
+
+```css
+window.tdm { font-family: "Fira Code", "TDM Icons", monospace; }
+```
+
+If icons show as boxes, check that the icon font is installed:
+
+```sh
+fc-list ':charset=f0e7' family     # should list "TDM Icons"
+```
+
+If it doesn't, run the installer again.
 
 ## If something goes wrong
 

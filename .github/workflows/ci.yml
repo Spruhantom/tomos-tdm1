@@ -75,6 +75,11 @@ jobs:
           test -d /var/lib/tdm
           tdm config | grep -q 'theme: Neon'
           tdm check
+          # the icon font is installed and fontconfig finds it for the bolt icon
+          fc-list ':charset=f0e7' family | tee /dev/stderr | grep -q 'TDM Icons'
+          for cp in $(grep -o '\u{f[0-9a-f]*}' src/bin/greeter.rs | tr -d '\u{}' | sort -u); do
+            fc-list ":charset=$cp" family | grep -q 'TDM Icons' || { echo "icon U+$cp missing from TDM Icons"; exit 1; }
+          done
       - name: Settings survive a reinstall
         run: |
           echo 'title = KEEP ME' >> /etc/tdm/greeter.conf
